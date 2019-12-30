@@ -71,7 +71,7 @@ class User:
     self.username = username
     self.password = password
     self.usertype = usertype
-    self.infoname = infoname
+    #self.infoname = infoname
   def __repr__(self):
     return repr((self.username, self.password, self.usertype))
 
@@ -81,7 +81,7 @@ def get_all_user(request):
   userarr = []
   for var in userlist:
     infoName = UserInfo.objects.filter(username= var.username)
-    userarr.append(User(var.username, var.password, var.usertypem, infoName))
+    userarr.append(User(var.username, var.password, var.usertype,infoName))
 
   #print (userarr)
   jsonarr = json.dumps(userarr, default=lambda o: o.__dict__, sort_keys=True)

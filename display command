@@ -1,0 +1,5 @@
+ python manage.py shell  运行shell
+from backend.models import UserList 导入UserList表
+UserList.objects.values("username","password","usertype") 输出所有值
+UserList.objects.create(username="admin001",password="001",usertype="admin")
+UserList.objects.values("username","password","usertype")

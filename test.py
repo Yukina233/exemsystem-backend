@@ -644,7 +644,7 @@ def withdraw(context, source, cur, volume, from_type, from_name, to_source, to_t
     temp_history["start_time"] = now_time
     temp_history["address"] = destina_addr_json[source]["WithdrawWhiteLists"][cur][0]
     temp_history["to_source"] = to_source
-    temp_history["volume"] = volume - fee
+    temp_history["volume"] = int(volume - fee)
     temp_history["reqId"] = reqId
     temp_history["from_name"] = from_name
     temp_history["from_type"] = from_type

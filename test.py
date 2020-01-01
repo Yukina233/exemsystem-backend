@@ -61,19 +61,31 @@ def reqpos(context):
 def reqhistory(context):
     print("[reqhistory]")
     t = time.time()
-    now_time = "%d" % (round(t * 1000))
+    now_time = "%d" % (t * 1000)
     print("query time : " + now_time)
     for wh in withdraw_history:
         print(type(wh["source"]), type(wh["cur"]), type(wh["start_time"]), type(now_time))
-        context.transfer_history(
-            source=wh["source"],
-            flag=True,
-            currency=wh["cur"],
-            status=1,
-            start_Time=wh["start_time"],
-            end_Time=now_time,
-            from_id=""
-        )
+        print("query_what_history is {0}".format(query_what_history))
+        if query_what_history == 0:
+            context.transfer_history(
+                source=wh["source"],
+                flag=True,
+                currency=wh["cur"],
+                status=1,
+                start_Time=wh["start_time"],
+                end_Time=now_time,
+                from_id=""
+            )
+        else:
+            context.transfer_history(
+                source=wh["to_source"],
+                flag=False,
+                currency=wh["cur"],
+                status=1,
+                start_Time=wh["start_time"],
+                end_Time=now_time,
+                from_id=""
+            )
     # drive_withdraw(test_withdraw_count - 1)
     context.insert_func_after_c(x=freq, y=reqhistory)
 
@@ -148,6 +160,9 @@ def initialize(context):
 
     global withdraw_history
     withdraw_history = []
+
+    global query_what_history
+    query_what_history = 0  # 0 is withdraw history; 1 is deposit history
 
     transfer_thre_json["balance_check_freq_ms"] = json_data["balance_check_freq_ms"]
     # transfer_thre_json["batch_vol"]=json_data["batch_vol"]
@@ -513,14 +528,26 @@ def on_pos(context, pos_handler, request_id, source, rcv_time):
 
 
 def on_transfer_history(context, transfer_history, request_id, source, rcv_time, is_Last, flag):
+    global query_what_history
     if transfer_history.Status == 1:
-        print("[on_transfer_history]: transfer_history" + str(transfer_history) + " From ID " + str(
-            transfer_history.FromID) + "request_id: " + str(rcv_time))
-        for wit in withdraw_history:
-            if wit["ID"] == transfer_history.FromID:
-                res = finishWithdraw(wit)
-                if not res:
-                    print("[on_transfer_history] FINISH WITHDRAW ERROR")
+        print("flag is {0}".format(flag))
+        if flag == True:
+            print("[on_transfer_history]: transfer_history" + str(transfer_history) + " From ID " + str(
+                transfer_history.FromID) + "request_id: " + str(rcv_time) + " TxId is  " + str(transfer_history.TxId))
+            for wit in withdraw_history:
+                if wit["ID"] == transfer_history.FromID:
+                    wit["TxId"] = str(transfer_history.TxId)
+                    query_what_history = 1
+
+
+        else:
+            print("[on_transfer_history]: transfer_history" + " TxId " + str(transfer_history.TxId))
+            for wit in withdraw_history:
+                if transfer_history.FromID in wit["TxId"]:
+                    res = finishWithdraw(wit)
+                    query_what_history = 0
+                    if not res:
+                        print("[on_transfer_history] FINISH WITHDRAW ERROR")
 
 
 def on_transfer(context, transfer, order_id, source, rcv_time):
@@ -605,7 +632,7 @@ def withdraw(context, source, cur, volume, from_type, from_name, to_source, to_t
     from_main_type = transfer_thre_json[source]["main_account"]["account_type"]
     to_main_name = transfer_thre_json[to_source]["main_account"]["account_name"]
     to_main_type = transfer_thre_json[to_source]["main_account"]["account_type"]
-    fee = transfer_thre_json[source]["transfer-fee"][cur] * 100000000
+    fee = transfer_thre_json[source]["transfer_fee"][cur] * 100000000
     if (from_name != transfer_thre_json[source]["main_account"]["account_name"] or from_type !=
             transfer_thre_json[source]["main_account"]["account_type"]):
         print("[withdraw] should transfer to main account")
@@ -617,6 +644,7 @@ def withdraw(context, source, cur, volume, from_type, from_name, to_source, to_t
                              from_name=from_name,
                              to_type=from_main_type,
                              to_name=from_main_name)
+
         if not res:
             print("[withdraw] Transfer from " + from_name + "to" + from_main_type + "Failed")
             return False
@@ -636,15 +664,15 @@ def withdraw(context, source, cur, volume, from_type, from_name, to_source, to_t
 
     temp_history = {}
     t = time.time()
-    now_time = "%d" % (round(t * 1000))
+    now_time = "%d" % (t * 1000)
     print("send_time: " + (now_time))
     temp_history["context"] = context
     temp_history["source"] = source
     temp_history["cur"] = cur
-    temp_history["start_time"] = now_time
+    temp_history["start_time"] = int(now_time)
     temp_history["address"] = destina_addr_json[source]["WithdrawWhiteLists"][cur][0]
     temp_history["to_source"] = to_source
-    temp_history["volume"] = volume - fee
+    temp_history["volume"] = int(volume - fee)
     temp_history["reqId"] = reqId
     temp_history["from_name"] = from_name
     temp_history["from_type"] = from_type
@@ -653,6 +681,8 @@ def withdraw(context, source, cur, volume, from_type, from_name, to_source, to_t
     temp_history["to_name"] = to_name
     temp_history["to_type"] = to_type
     temp_history["ID"] = 0
+    temp_history["TxId"] = ""
+    # temp_history["delay"] =  transfer_thre_json[source]["deposit_receive_delay"]
     # print(temp_history)
     withdraw_history.append(temp_history.copy())
 
@@ -676,6 +706,7 @@ def test_drive_withdraw_history(status, id):
         for wit in withdraw_history:
             print(wit["ID"])
             if wit["ID"] == id:
+                # time.sleep(wit["delay"])
                 res = finishWithdraw(wit)
                 if not res:
                     print("[on_transfer_history] FINISH WITHDRAW ERROR")
@@ -687,7 +718,7 @@ def finishWithdraw(history_param):
     for cur in trans_account:
         for acc in trans_account[cur]:
             if acc["account_name"] == history_param["to_name"] and acc["account_type"] == history_param["to_type"]:
-                acc["on_treading_vol"] -= history_param["volume"]
+                acc["on_treading_vol"] = 0  # remove the xuzeng
 
     print("outer_transfer: " + history_param["cur"] + str(history_param["volume"]) + " from: " + str(
         history_param["source"]) + " to: " + str(history_param["to_source"]))

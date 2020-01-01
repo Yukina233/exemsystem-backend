@@ -67,20 +67,27 @@ def myinfo(request):
 
 
 class User:
-  def __init__(self, username, password, usertype,infoname):
+  def __init__(self, username, password, usertype, infoname):
     self.username = username
     self.password = password
     self.usertype = usertype
-    #self.infoname = infoname
+    self.infoname = infoname
+
   def __repr__(self):
-    return repr((self.username, self.password, self.usertype))
+    return repr((self.username, self.password, self.usertype,self.infoname))
 
 
 def get_all_user(request):
   userlist = UserList.objects.all()
   userarr = []
   for var in userlist:
-    infoName = UserInfo.objects.filter(username= var.username)
+    print(var.username)
+    infoName = ""
+    if var.usertype == 'admin':
+      infoName = 'admin'
+    else:
+      infoName = UserInfo.objects.filter(username= var.username).values("name")[0]["name"]
+    print(infoName)
     userarr.append(User(var.username, var.password, var.usertype,infoName))
 
   #print (userarr)
@@ -142,6 +149,7 @@ def delete_user(request):
   #database = UserList.objects.get(username = user_to_del)
   #database.delete()
   UserList.objects.filter(username = user_to_del).delete()
+  UserInfo.objects.filter(username = user_to_del).delete()
   status = {'code': 200, 'info': user_to_del }
   return HttpResponse(json.dumps(status), content_type="application/json")
 

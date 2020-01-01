@@ -1,12 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="3b37d379-41da-44f5-9d12-2e34929e1c07" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/backend/migrations/0007_userinfo.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/login_manage.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/login_manage.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test.py" beforeDir="false" afterPath="$PROJECT_DIR$/test.py" afterDir="false" />
-    </list>
+    <list default="true" id="3b37d379-41da-44f5-9d12-2e34929e1c07" name="Default Changelist" comment="" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -217,7 +212,7 @@
       <workItem from="1577504565410" duration="501000" />
       <workItem from="1577612384491" duration="335000" />
       <workItem from="1577689428156" duration="633000" />
-      <workItem from="1577690458528" duration="7857000" />
+      <workItem from="1577690458528" duration="8423000" />
     </task>
     <servers />
   </component>

@@ -166,7 +166,7 @@ def logout(request):
   return HttpResponse(json.dumps(status), content_type="application/json")
 
 
-def upload_user(request):
+def upload_userlist(request):
   ret = {'code': 403, 'info': 'denied method ' + request.method }
 
   if request.method == 'POST':
@@ -190,8 +190,9 @@ def upload_user(request):
       if sheet1.cell_value(line, 0) == "":
         break
       uname = str(sheet1.cell_value(line, 0))
-      utype = str(sheet1.cell_value(line, 1))
-      passwd = str(sheet1.cell_value(line, 2))
+      name = str(sheet1.cell_value(line, 1))
+      utype = str(sheet1.cell_value(line, 2))
+      passwd = str(sheet1.cell_value(line, 3))
       if utype == '教师':
         utype = 'teacher'
       else:
@@ -199,9 +200,12 @@ def upload_user(request):
       if if_user_exist(uname) == True:
         line += 1
         continue
-      print(uname + '#' + passwd + '#' + utype)
-      new_record = UserList(username = uname, password = passwd, usertype = utype)
-      new_record.save()
+      print(uname + '#' + name + '#' + passwd + '#' + utype)
+      new_record1 = UserList(username = uname, password = passwd, usertype = utype)
+      new_record1.save()
+
+      new_record2 = UserInfo(username=uname, name = name)
+      new_record2.save()
       line += 1
       '''
       problem = str(sheet1.cell_value(line, 0))

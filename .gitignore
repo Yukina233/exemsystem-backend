@@ -105,3 +105,4 @@ venv.bak/
 
 runserver.sh
 upload.*
+.idea/workspace.xml

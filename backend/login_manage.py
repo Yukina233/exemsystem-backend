@@ -26,21 +26,25 @@ def login(request):
 
     for var in ulist:
       if username == var.username and password == var.password:
-        print(username + " " + password + " " +var.usertype)
+        if var.usertype == 'admin':
+          infoName = 'admin'
+        else:
+          infoName = UserInfo.objects.filter(username=var.username).values("name")[0]["name"]
         request.session['login_name'] = username
         request.session.modified = True
+        request.session['info_name'] =infoName
         # set pages to jump to by users' types
         if var.usertype == 'student':
           request.session['type'] = 'student'
-          status = {'code': 200, 'redirect': 'student.html', 'username': username }
+          status = {'code': 200, 'redirect': 'student.html', 'username': username , 'infoname':infoName }
         elif var.usertype == 'teacher':
           request.session['type'] = 'teacher'
-          status = {'code': 200, 'redirect': 'teacher.html', 'username': username }
+          status = {'code': 200, 'redirect': 'teacher.html', 'username': username,'infoname':infoName  }
         elif var.usertype == 'admin':
           request.session['type'] =  'admin'
-          status = {'code': 200, 'redirect': 'admin.html', 'username': username }
+          status = {'code': 200, 'redirect': 'admin.html', 'username': username,'infoname':infoName  }
         else:
-          status = {'code': 403, 'redirect': 'error.html', 'username': username }
+          status = {'code': 403, 'redirect': 'error.html', 'username': username,'infoname':infoName  }
           del request.session['login_name']
         return HttpResponse(json.dumps(status), content_type="application/json")
     # login failed
@@ -51,7 +55,8 @@ def login(request):
   elif request.method == 'GET':
     try:
       uname = request.session["login_name"]
-      status = {'code': 200, 'username': uname }     
+      infoName =  request.session["info_name"]
+      status = {'code': 200, 'username': uname,'infoname':infoName }
     except Exception:
       status = {'code': 403, 'info': 'not logged in' }
     return HttpResponse(json.dumps(status), content_type="application/json")

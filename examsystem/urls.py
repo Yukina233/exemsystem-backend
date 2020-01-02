@@ -50,7 +50,7 @@ urlpatterns = [
     url(r'^user-add/', login_manage.add_user),
     url(r'^user-add-batch/', login_manage.add_user_batch),
     url(r'^user-delete/', login_manage.delete_user),
-    url(r'^user-upload/', login_manage.upload_user),
+    url(r'^user-upload/', login_manage.upload_userlist),
 
     url(r'^echo/', views.httpecho),
     url(r'^', views.notfound),

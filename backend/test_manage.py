@@ -368,14 +368,19 @@ def judge_manage(request):
         ret = {'code': 200, 'info': 'ok'}
         # build the list of all students' answers
         retlist = []
+        illulist = [0,0,0,0,0]
         db = TestRecord.objects.filter(paperid=paperid)
         for var in db:
             retlist.append(claRecord(var.paperid, var.stuid, var.submit_time, var.answers,
                                      var.keguan_grade, var.keguan_detail, var.zhuguan_grade, var.zhuguan_detail,
                                      var.total_score, var.confirmed))
+            if(var.total_score<60):
+                illulist[0] += 1
+            else:
+                illulist[int((var.total_score-50)/10)] += 1
         jsonarr = json.dumps(retlist, default=lambda o: o.__dict__, sort_keys=True)
         loadarr = json.loads(jsonarr)
-        ret = {'code': 200, 'info': 'ok', 'anslist': loadarr}
+        ret = {'code': 200, 'info': 'ok', 'anslist': loadarr,'illulist': illulist}
         ###
 
     elif action == 'delans':

@@ -659,7 +659,7 @@ def paper_export(request):
             row = row + 1
 
     # 保存
-    workbook.save('files/试卷成绩单.xls')
+    workbook.save('files/test.xls')
 
     ret = {'code': 200, 'info': 'ok'}
     return HttpResponse(json.dumps(ret), content_type="application/json")

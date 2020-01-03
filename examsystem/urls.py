@@ -19,11 +19,15 @@ from django.views.generic import TemplateView
 from backend import views
 from backend import login_manage
 from backend import test_manage
+from backend import store_manage
 # import indata_tool_api.urls
 from django.conf import settings
 from django.conf.urls.static import static
 import examsystem
 import django
+
+
+
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
@@ -56,7 +60,12 @@ urlpatterns = [
     url(r'^user-upload/', login_manage.upload_userlist),
 
 
+    url(r'^store-upload/', store_manage.upload_prolist),
+
+
     url(r'^echo/', views.httpecho),
     url(r'^', views.notfound),
+
+
     # url(r'^$', TemplateView.as_view(template_name="index.html")),
 ]

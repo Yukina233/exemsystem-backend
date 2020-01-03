@@ -42,7 +42,6 @@ def get_stu_testlist(request):
     ret = {'code': 404, 'info': 'unknown error'}
     ph = PaperHelper()
     stuid = request.session['login_name']
-    infoname_t = request.session['info_name']
     # get the list of submitted papers
     test_taken = TestRecord.objects.filter(stuid=stuid)
     takenlist = []
@@ -66,6 +65,7 @@ def get_stu_testlist(request):
         sl = json.loads(paper.stulist)
         if ph.ExistStu(sl, stuid) == True and taken_this == False:
             # print("[%s] is in paper [%s]." % (stuid, paper.pid))
+            infoname_t = UserInfo.objects.filter(username=paper.teaname).values("name")[0]["name"]
             stucount = json.loads(paper.stulist)['count']
             procount = json.loads(paper.prolist)['problem_count']
             retlist.append(claPaper(paper.pid, paper.pname, paper.teaname, paper.penabled,
@@ -81,19 +81,26 @@ def get_history(request):
     stuid = request.session['login_name']
     records = TestRecord.objects.filter(stuid=stuid)
     takenlist = []
+
     for var in records:
         print(var.paperid)
         paper = Paper.objects.get(pid=var.paperid)
         score = -1
         if var.confirmed == 'yes':
             score = var.total_score
+
+
+        infoName = UserInfo.objects.filter(username=paper.teaname).values("name")[0]["name"]
+        print(infoName)
+        print(paper.teaname)
         obj = {
             'pid': var.paperid,
             'pname': paper.pname,
             'teaname': paper.teaname,
             'subtime': var.submit_time,
             'confirmed': var.confirmed,
-            'grade': score
+            'grade': score,
+            'infoname':infoName
         }
         takenlist.append(obj)
 
@@ -391,18 +398,19 @@ def judge_manage(request):
         illulist = [0, 0, 0, 0, 0]
         db = TestRecord.objects.filter(paperid=paperid)
         for var in db:
-            if not var.confirmed == "yes":
-                continue
             retlist.append(claRecord(var.paperid, var.stuid, var.submit_time, var.answers,
                                      var.keguan_grade, var.keguan_detail, var.zhuguan_grade, var.zhuguan_detail,
                                      var.total_score, var.confirmed))
             print(var.total_score)
+            if not var.confirmed == "yes":
+                continue
             if (var.total_score < 60):
                 illulist[0] += 1
             elif var.total_score >= 90:
                 illulist[4] += 1
             else:
                 illulist[int((var.total_score - 50) / 10)] += 1
+        print(illulist)
         jsonarr = json.dumps(retlist, default=lambda o: o.__dict__, sort_keys=True)
         loadarr = json.loads(jsonarr)
         ret = {'code': 200, 'info': 'ok', 'anslist': loadarr, 'illulist': illulist}

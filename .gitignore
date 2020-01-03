@@ -106,8 +106,9 @@ venv.bak/
 
 runserver.sh
 upload.*
-<<<<<<< HEAD
+
 db.sqlite3
-=======
+
 .idea/workspace.xml
->>>>>>> 55d050ccdd6d27a5fcbf5cd11721457dd8c3a571
+
+files/

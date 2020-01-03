@@ -243,7 +243,6 @@ def modify_paper_stulist(request):
     ###
     print(paperid)
     paperdb = Paper.objects.get(pid=paperid)
-
     if (action == 'addstu'):
         stulist = postjson['stulist']
         stuarray = stulist.split(';')
@@ -252,6 +251,10 @@ def modify_paper_stulist(request):
         for var in stuarray:
             # TODO(LOW): verify var(stuid) whether existing
             #
+            result = UserList.objects.filter(username=var)
+            if not result.exists() :
+                continue
+
             if (var == ''):
                 continue
             ph.AddStu(original_stulist, var)
@@ -567,3 +570,48 @@ def upload_prolist(request):
         pass
 
     return HttpResponse(json.dumps(ret), content_type="application/json")
+
+def upload_stulist(request):
+    ret = {'code': 403, 'info': 'denied method ' + request.method}
+    ph = PaperHelper()
+    if request.method == 'POST':
+        # acquire paperid from form
+        paperid = request.POST.get('paperid')
+        obj = request.FILES.get('file')
+        print(paperid)
+        paperdb = Paper.objects.get(pid=paperid)
+        original_stulist = json.loads(paperdb.stulist)
+
+        # acquire file from form
+        obj = request.FILES.get('file')
+        save_path = os.path.join(settings.BASE_DIR, 'upload.xls')
+        # print(save_path)
+        f = open(save_path, 'wb')
+        for chunk in obj.chunks():
+            f.write(chunk)
+        f.close()
+
+        # read the xls file and load problems
+        x1 = xlrd.open_workbook(save_path)
+        sheet1 = x1.sheet_by_name("Sheet1")
+        line = 4
+        while line <= 50 and line < sheet1.nrows:
+            if sheet1.cell_value(line, 0) == "":
+                break
+            # print(sheet1.cell_value(line, 0))
+            uname = str(sheet1.cell_value(line, 0))
+            print(uname)
+            if not UserList.objects.filter(username=uname).exists():
+                line += 1
+                continue
+            ph.AddStu(original_stulist,uname)
+
+            line += 1
+        paperdb.stulist = json.dumps(original_stulist)
+        paperdb.save()
+
+        os.remove(save_path)
+        ret = {'code': 200, 'info': 'ok'}
+        pass
+
+        return HttpResponse(json.dumps(ret), content_type="application/json")

@@ -38,6 +38,7 @@ urlpatterns = [
     url(r'^paper-prolist/', test_manage.modify_paper_prolist),
     url(r'^paper-stulist/', test_manage.modify_paper_stulist),
     url(r'^paper-upload/', test_manage.upload_prolist),
+    url(r'^stu-upload/',test_manage.upload_stulist),
     
     url(r'^test-manage/', test_manage.test_manage),
     url(r'^result-manage/', test_manage.result_manage),
@@ -51,6 +52,7 @@ urlpatterns = [
     url(r'^user-add-batch/', login_manage.add_user_batch),
     url(r'^user-delete/', login_manage.delete_user),
     url(r'^user-upload/', login_manage.upload_userlist),
+
 
     url(r'^echo/', views.httpecho),
     url(r'^', views.notfound),

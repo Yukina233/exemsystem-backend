@@ -391,11 +391,16 @@ def judge_manage(request):
         illulist = [0, 0, 0, 0, 0]
         db = TestRecord.objects.filter(paperid=paperid)
         for var in db:
+            if not var.confirmed == "yes":
+                continue
             retlist.append(claRecord(var.paperid, var.stuid, var.submit_time, var.answers,
                                      var.keguan_grade, var.keguan_detail, var.zhuguan_grade, var.zhuguan_detail,
                                      var.total_score, var.confirmed))
+            print(var.total_score)
             if (var.total_score < 60):
                 illulist[0] += 1
+            elif var.total_score >= 90:
+                illulist[4] += 1
             else:
                 illulist[int((var.total_score - 50) / 10)] += 1
         jsonarr = json.dumps(retlist, default=lambda o: o.__dict__, sort_keys=True)
@@ -642,21 +647,44 @@ def paper_export(request):
     alignment.vert = xlwt.Alignment.VERT_CENTER  # May be: VERT_TOP, VERT_CENTER, VERT_BOTTOM, VERT_JUSTIFIED, VERT_DISTRIBUTED
     style = xlwt.XFStyle()  # Create Style
     style.alignment = alignment  # Add Alignment to Style
+    pattern = xlwt.Pattern()  # Create the Pattern
+    pattern.pattern = xlwt.Pattern.SOLID_PATTERN  # May be: NO_PATTERN, SOLID_PATTERN, or 0x00 through 0x12
+    pattern.pattern_fore_colour = 5  # May be: 8 through 63. 0 = Black, 1 = White, 2 = Red, 3 = Green, 4 = Blue, 5 = Yellow, 6 = Magenta, 7 = Cyan, 16 = Maroon, 17 = Dark Green, 18 = Dark Blue, 19 = Dark Yellow , almost brown), 20 = Dark Magenta, 21 = Teal, 22 = Light Gray, 23 = Dark Gray, the list goes on...
 
     # 写入excel
     # 参数对应 行, 列, 值
     worksheet.write(0, 0, '学号', style)
-    worksheet.write(0, 1, '客观题', style)
-    worksheet.write(0, 2, '主观题', style)
-    worksheet.write(0, 3, '总分', style)
-    row = 1;
+    worksheet.write(0, 1, '姓名', style)
+    worksheet.write(0, 2, '客观题', style)
+    worksheet.write(0, 3, '主观题', style)
+    worksheet.write(0, 4, '总分', style)
+    max = 0
+    min = 1000000
+    summary = 0
+    row = 1
     for var in db:
         if var.confirmed == "yes":
+            infoName = UserInfo.objects.filter(username=var.stuid).values("name")[0]["name"]
+
             worksheet.write(row, 0, var.stuid, style)
-            worksheet.write(row, 1, var.keguan_grade, style)
-            worksheet.write(row, 2, var.zhuguan_grade, style)
-            worksheet.write(row, 3, var.total_score, style)
-            row = row + 1
+            worksheet.write(row, 1, infoName, style)
+            worksheet.write(row, 2, var.keguan_grade, style)
+            worksheet.write(row, 3, var.zhuguan_grade, style)
+            worksheet.write(row, 4, var.total_score, style)
+            row += 1
+            summary += var.total_score
+            if var.total_score > max:
+                max = var.total_score
+            if var.total_score < min:
+                min = var.total_score
+
+    style.pattern = pattern  # Add Pattern to Style
+    worksheet.write(row + 2, 0, '平均分', style)
+    worksheet.write(row + 3, 0, '最高分', style)
+    worksheet.write(row + 4, 0, '最低分', style)
+    worksheet.write(row + 2, 1, summary / (row - 1), style)
+    worksheet.write(row + 3, 1, max, style)
+    worksheet.write(row + 4, 1, min, style)
 
     # 保存
     workbook.save('files/试卷成绩单.xls')

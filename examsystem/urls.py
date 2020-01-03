@@ -40,6 +40,8 @@ urlpatterns = [
     url(r'^paper-upload/', test_manage.upload_prolist),
     url(r'^stu-upload/',test_manage.upload_stulist),
     
+    url(r'^paper-export/', test_manage.paper_export),
+
     url(r'^test-manage/', test_manage.test_manage),
     url(r'^result-manage/', test_manage.result_manage),
     url(r'^judge-manage/', test_manage.judge_manage),

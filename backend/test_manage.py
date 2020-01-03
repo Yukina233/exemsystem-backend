@@ -15,6 +15,7 @@ import time
 from backend.PaperHelper import PaperHelper
 from backend import json_helper as jh
 import xlrd
+import xlwt
 import sys
 
 
@@ -273,6 +274,7 @@ def modify_paper_stulist(request):
 
     elif (action == 'cleanstu'):
         original_stulist = json.loads(paperdb.stulist)
+        gradelist = json.loads(paperdb.stulist)
         count = original_stulist['count']
         empty_list = ph.CreateStuList()
         paperdb.stulist = json.dumps(empty_list)
@@ -291,10 +293,10 @@ def result_manage(request):
         db = Paper.objects.get(pid=paperid)
         paper_pro = json.loads(db.prolist)
 
-        db1 = TestRecord.objects.get(paperid=paperid,stuid=stuid)
+        db1 = TestRecord.objects.get(paperid=paperid, stuid=stuid)
         stu_res = json.loads(db1.answers)
         zhuguan_grd = json.loads(db1.zhuguan_detail)
-        test = ph.Paper2Result(paper_pro, stu_res,zhuguan_grd)
+        test = ph.Paper2Result(paper_pro, stu_res, zhuguan_grd)
         ###
         subcount = TestRecord.objects.filter(paperid=paperid).count()
         infoname_t = UserInfo.objects.filter(username=db.teaname).values("name")[0]["name"]
@@ -386,19 +388,19 @@ def judge_manage(request):
         ret = {'code': 200, 'info': 'ok'}
         # build the list of all students' answers
         retlist = []
-        illulist = [0,0,0,0,0]
+        illulist = [0, 0, 0, 0, 0]
         db = TestRecord.objects.filter(paperid=paperid)
         for var in db:
             retlist.append(claRecord(var.paperid, var.stuid, var.submit_time, var.answers,
                                      var.keguan_grade, var.keguan_detail, var.zhuguan_grade, var.zhuguan_detail,
                                      var.total_score, var.confirmed))
-            if(var.total_score<60):
+            if (var.total_score < 60):
                 illulist[0] += 1
             else:
-                illulist[int((var.total_score-50)/10)] += 1
+                illulist[int((var.total_score - 50) / 10)] += 1
         jsonarr = json.dumps(retlist, default=lambda o: o.__dict__, sort_keys=True)
         loadarr = json.loads(jsonarr)
-        ret = {'code': 200, 'info': 'ok', 'anslist': loadarr,'illulist': illulist}
+        ret = {'code': 200, 'info': 'ok', 'anslist': loadarr, 'illulist': illulist}
         ###
 
     elif action == 'delans':
@@ -615,3 +617,49 @@ def upload_stulist(request):
         pass
 
         return HttpResponse(json.dumps(ret), content_type="application/json")
+
+def paper_export(request):
+    postjson = jh.post2json(request)
+    paperid = postjson['paperid']
+    action = postjson['action']
+    ph = PaperHelper()
+    ret = {'code': 404, 'info': 'unknown action' + action}
+    # TODO(LOW): verify paperid whether existing
+    ###
+    db = TestRecord.objects.filter(paperid=paperid)
+
+    # 创建一个workbook 设置编码
+    workbook = xlwt.Workbook(encoding='utf-8')
+    # 创建一个worksheet
+    worksheet = workbook.add_sheet('成绩单')
+    # 设置宽度和格式
+    worksheet.col(0).width = 3200
+    worksheet.col(1).width = 3200
+    worksheet.col(2).width = 3200
+    worksheet.col(3).width = 3200
+    alignment = xlwt.Alignment()  # Create Alignment
+    alignment.horz = xlwt.Alignment.HORZ_CENTER  # May be: HORZ_GENERAL, HORZ_LEFT, HORZ_CENTER, HORZ_RIGHT, HORZ_FILLED, HORZ_JUSTIFIED, HORZ_CENTER_ACROSS_SEL, HORZ_DISTRIBUTED
+    alignment.vert = xlwt.Alignment.VERT_CENTER  # May be: VERT_TOP, VERT_CENTER, VERT_BOTTOM, VERT_JUSTIFIED, VERT_DISTRIBUTED
+    style = xlwt.XFStyle()  # Create Style
+    style.alignment = alignment  # Add Alignment to Style
+
+    # 写入excel
+    # 参数对应 行, 列, 值
+    worksheet.write(0, 0, '学号', style)
+    worksheet.write(0, 1, '客观题', style)
+    worksheet.write(0, 2, '主观题', style)
+    worksheet.write(0, 3, '总分', style)
+    row = 1;
+    for var in db:
+        if var.confirmed == "yes":
+            worksheet.write(row, 0, var.stuid, style)
+            worksheet.write(row, 1, var.keguan_grade, style)
+            worksheet.write(row, 2, var.zhuguan_grade, style)
+            worksheet.write(row, 3, var.total_score, style)
+            row = row + 1
+
+    # 保存
+    workbook.save('files/试卷成绩单.xls')
+
+    ret = {'code': 200, 'info': 'ok'}
+    return HttpResponse(json.dumps(ret), content_type="application/json")

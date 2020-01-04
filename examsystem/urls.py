@@ -19,11 +19,15 @@ from django.views.generic import TemplateView
 from backend import views
 from backend import login_manage
 from backend import test_manage
+from backend import store_manage
 # import indata_tool_api.urls
 from django.conf import settings
 from django.conf.urls.static import static
 import examsystem
 import django
+
+
+
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
@@ -38,6 +42,8 @@ urlpatterns = [
     url(r'^paper-prolist/', test_manage.modify_paper_prolist),
     url(r'^paper-stulist/', test_manage.modify_paper_stulist),
     url(r'^paper-upload/', test_manage.upload_prolist),
+    url(r'^stu-upload/',test_manage.upload_stulist),
+    
     url(r'^paper-export/', test_manage.paper_export),
 
     url(r'^test-manage/', test_manage.test_manage),
@@ -53,7 +59,15 @@ urlpatterns = [
     url(r'^user-delete/', login_manage.delete_user),
     url(r'^user-upload/', login_manage.upload_userlist),
 
+
+    url(r'^store-upload/', store_manage.upload_prolist),
+    url(r'^store-manage/', store_manage.store_manage),
+    url(r'^store-get-detail/', store_manage.get_store_detail),
+
+
     url(r'^echo/', views.httpecho),
     url(r'^', views.notfound),
+
+
     # url(r'^$', TemplateView.as_view(template_name="index.html")),
 ]

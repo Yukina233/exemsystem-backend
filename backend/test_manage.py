@@ -42,7 +42,6 @@ def get_stu_testlist(request):
     ret = {'code': 404, 'info': 'unknown error'}
     ph = PaperHelper()
     stuid = request.session['login_name']
-    infoname_t = request.session['info_name']
     # get the list of submitted papers
     test_taken = TestRecord.objects.filter(stuid=stuid)
     takenlist = []
@@ -66,6 +65,7 @@ def get_stu_testlist(request):
         sl = json.loads(paper.stulist)
         if ph.ExistStu(sl, stuid) == True and taken_this == False:
             # print("[%s] is in paper [%s]." % (stuid, paper.pid))
+            infoname_t = UserInfo.objects.filter(username=paper.teaname).values("name")[0]["name"]
             stucount = json.loads(paper.stulist)['count']
             procount = json.loads(paper.prolist)['problem_count']
             retlist.append(claPaper(paper.pid, paper.pname, paper.teaname, paper.penabled,
@@ -81,19 +81,26 @@ def get_history(request):
     stuid = request.session['login_name']
     records = TestRecord.objects.filter(stuid=stuid)
     takenlist = []
+
     for var in records:
         print(var.paperid)
         paper = Paper.objects.get(pid=var.paperid)
         score = -1
         if var.confirmed == 'yes':
             score = var.total_score
+
+
+        infoName = UserInfo.objects.filter(username=paper.teaname).values("name")[0]["name"]
+        print(infoName)
+        print(paper.teaname)
         obj = {
             'pid': var.paperid,
             'pname': paper.pname,
             'teaname': paper.teaname,
             'subtime': var.submit_time,
             'confirmed': var.confirmed,
-            'grade': score
+            'grade': score,
+            'infoname':infoName
         }
         takenlist.append(obj)
 
@@ -244,7 +251,6 @@ def modify_paper_stulist(request):
     ###
     print(paperid)
     paperdb = Paper.objects.get(pid=paperid)
-
     if (action == 'addstu'):
         stulist = postjson['stulist']
         stuarray = stulist.split(';')
@@ -253,6 +259,10 @@ def modify_paper_stulist(request):
         for var in stuarray:
             # TODO(LOW): verify var(stuid) whether existing
             #
+            result = UserList.objects.filter(username=var)
+            if not result.exists() :
+                continue
+
             if (var == ''):
                 continue
             ph.AddStu(original_stulist, var)
@@ -391,10 +401,16 @@ def judge_manage(request):
             retlist.append(claRecord(var.paperid, var.stuid, var.submit_time, var.answers,
                                      var.keguan_grade, var.keguan_detail, var.zhuguan_grade, var.zhuguan_detail,
                                      var.total_score, var.confirmed))
+            print(var.total_score)
+            if not var.confirmed == "yes":
+                continue
             if (var.total_score < 60):
                 illulist[0] += 1
+            elif var.total_score >= 90:
+                illulist[4] += 1
             else:
                 illulist[int((var.total_score - 50) / 10)] += 1
+        print(illulist)
         jsonarr = json.dumps(retlist, default=lambda o: o.__dict__, sort_keys=True)
         loadarr = json.loads(jsonarr)
         ret = {'code': 200, 'info': 'ok', 'anslist': loadarr, 'illulist': illulist}
@@ -570,6 +586,50 @@ def upload_prolist(request):
 
     return HttpResponse(json.dumps(ret), content_type="application/json")
 
+def upload_stulist(request):
+    ret = {'code': 403, 'info': 'denied method ' + request.method}
+    ph = PaperHelper()
+    if request.method == 'POST':
+        # acquire paperid from form
+        paperid = request.POST.get('paperid')
+        obj = request.FILES.get('file')
+        print(paperid)
+        paperdb = Paper.objects.get(pid=paperid)
+        original_stulist = json.loads(paperdb.stulist)
+
+        # acquire file from form
+        obj = request.FILES.get('file')
+        save_path = os.path.join(settings.BASE_DIR, 'upload.xls')
+        # print(save_path)
+        f = open(save_path, 'wb')
+        for chunk in obj.chunks():
+            f.write(chunk)
+        f.close()
+
+        # read the xls file and load problems
+        x1 = xlrd.open_workbook(save_path)
+        sheet1 = x1.sheet_by_name("Sheet1")
+        line = 4
+        while line <= 50 and line < sheet1.nrows:
+            if sheet1.cell_value(line, 0) == "":
+                break
+            # print(sheet1.cell_value(line, 0))
+            uname = str(sheet1.cell_value(line, 0))
+            print(uname)
+            if not UserList.objects.filter(username=uname).exists():
+                line += 1
+                continue
+            ph.AddStu(original_stulist,uname)
+
+            line += 1
+        paperdb.stulist = json.dumps(original_stulist)
+        paperdb.save()
+
+        os.remove(save_path)
+        ret = {'code': 200, 'info': 'ok'}
+        pass
+
+        return HttpResponse(json.dumps(ret), content_type="application/json")
 
 def paper_export(request):
     postjson = jh.post2json(request)
@@ -595,21 +655,44 @@ def paper_export(request):
     alignment.vert = xlwt.Alignment.VERT_CENTER  # May be: VERT_TOP, VERT_CENTER, VERT_BOTTOM, VERT_JUSTIFIED, VERT_DISTRIBUTED
     style = xlwt.XFStyle()  # Create Style
     style.alignment = alignment  # Add Alignment to Style
+    pattern = xlwt.Pattern()  # Create the Pattern
+    pattern.pattern = xlwt.Pattern.SOLID_PATTERN  # May be: NO_PATTERN, SOLID_PATTERN, or 0x00 through 0x12
+    pattern.pattern_fore_colour = 5  # May be: 8 through 63. 0 = Black, 1 = White, 2 = Red, 3 = Green, 4 = Blue, 5 = Yellow, 6 = Magenta, 7 = Cyan, 16 = Maroon, 17 = Dark Green, 18 = Dark Blue, 19 = Dark Yellow , almost brown), 20 = Dark Magenta, 21 = Teal, 22 = Light Gray, 23 = Dark Gray, the list goes on...
 
     # 写入excel
     # 参数对应 行, 列, 值
     worksheet.write(0, 0, '学号', style)
-    worksheet.write(0, 1, '客观题', style)
-    worksheet.write(0, 2, '主观题', style)
-    worksheet.write(0, 3, '总分', style)
-    row = 1;
+    worksheet.write(0, 1, '姓名', style)
+    worksheet.write(0, 2, '客观题', style)
+    worksheet.write(0, 3, '主观题', style)
+    worksheet.write(0, 4, '总分', style)
+    max = 0
+    min = 1000000
+    summary = 0
+    row = 1
     for var in db:
         if var.confirmed == "yes":
+            infoName = UserInfo.objects.filter(username=var.stuid).values("name")[0]["name"]
+
             worksheet.write(row, 0, var.stuid, style)
-            worksheet.write(row, 1, var.keguan_grade, style)
-            worksheet.write(row, 2, var.zhuguan_grade, style)
-            worksheet.write(row, 3, var.total_score, style)
-            row = row + 1
+            worksheet.write(row, 1, infoName, style)
+            worksheet.write(row, 2, var.keguan_grade, style)
+            worksheet.write(row, 3, var.zhuguan_grade, style)
+            worksheet.write(row, 4, var.total_score, style)
+            row += 1
+            summary += var.total_score
+            if var.total_score > max:
+                max = var.total_score
+            if var.total_score < min:
+                min = var.total_score
+
+    style.pattern = pattern  # Add Pattern to Style
+    worksheet.write(row + 2, 0, '平均分', style)
+    worksheet.write(row + 3, 0, '最高分', style)
+    worksheet.write(row + 4, 0, '最低分', style)
+    worksheet.write(row + 2, 1, summary / (row - 1), style)
+    worksheet.write(row + 3, 1, max, style)
+    worksheet.write(row + 4, 1, min, style)
 
     # 保存
     workbook.save('files/试卷成绩单.xls')

@@ -109,6 +109,6 @@ upload.*
 
 db.sqlite3
 
-.idea/workspace.xml
+.idea/workspace.iml
 
 files/

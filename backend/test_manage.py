@@ -8,11 +8,12 @@ from django.shortcuts import render
 from django.conf import settings
 from django.http import HttpResponse, HttpRequest, HttpResponseRedirect
 from django.db.models import Q
-from backend.models import UserList, Paper, TestRecord, UserInfo
+from backend.models import UserList, Paper, TestRecord, UserInfo, Teststore
 import json
 import os
 import time
 from backend.PaperHelper import PaperHelper
+from backend.StoreHelper import StoreHelper
 from backend import json_helper as jh
 import xlrd
 import xlwt
@@ -23,7 +24,7 @@ import sys
 # sys.setdefaultencoding('utf-8')
 
 class claPaper:
-    def __init__(self, pid, pname, teaname, penabled, stulist, prolist, submitted,infoname):
+    def __init__(self, pid, pname, teaname, penabled, stulist, prolist, submitted, infoname):
         self.pid = pid
         self.pname = pname
         self.teaname = teaname
@@ -35,7 +36,7 @@ class claPaper:
 
     def __repr__(self):
         return repr((self.pid, self.pname, self.teaname, self.penabled,
-                     self.stulist, self.prolist, self.submitted,self.infoname))
+                     self.stulist, self.prolist, self.submitted, self.infoname))
 
 
 def get_stu_testlist(request):
@@ -69,7 +70,7 @@ def get_stu_testlist(request):
             stucount = json.loads(paper.stulist)['count']
             procount = json.loads(paper.prolist)['problem_count']
             retlist.append(claPaper(paper.pid, paper.pname, paper.teaname, paper.penabled,
-                                    str(stucount), str(procount), 'unseen',infoname_t))
+                                    str(stucount), str(procount), 'unseen', infoname_t))
     jsonarr = json.dumps(retlist, default=lambda o: o.__dict__, sort_keys=True)
     loadarr = json.loads(jsonarr)
     ret = {'code': 200, 'list': loadarr, 'taken': takenlist}
@@ -89,7 +90,6 @@ def get_history(request):
         if var.confirmed == 'yes':
             score = var.total_score
 
-
         infoName = UserInfo.objects.filter(username=paper.teaname).values("name")[0]["name"]
         print(infoName)
         print(paper.teaname)
@@ -100,7 +100,7 @@ def get_history(request):
             'subtime': var.submit_time,
             'confirmed': var.confirmed,
             'grade': score,
-            'infoname':infoName
+            'infoname': infoName
         }
         takenlist.append(obj)
 
@@ -121,7 +121,7 @@ def get_tea_testlist(request):
         ###
 
         plist.append(claPaper(var.pid, var.pname, var.teaname,
-                              var.penabled, str(stucount), str(procount), str(subcount),str(infoname)))
+                              var.penabled, str(stucount), str(procount), str(subcount), str(infoname)))
     jsonarr = json.dumps(plist, default=lambda o: o.__dict__, sort_keys=True)
     loadarr = json.loads(jsonarr)
     ret = {'code': 200, 'list': loadarr}
@@ -148,12 +148,13 @@ def get_paper_detail(request):
         infoName = UserInfo.objects.filter(username=var['stu']).values("name")[0]["name"]
         slist.append(infoName)
     stulist["stu_info"] = slist
-    infoname_t = UserInfo.objects.filter(username= paper[0].teaname).values("name")[0]["name"]
+    infoname_t = UserInfo.objects.filter(username=paper[0].teaname).values("name")[0]["name"]
     strpaper = json.dumps(claPaper(paper[0].pid, paper[0].pname, paper[0].teaname,
-                                   paper[0].penabled, str(stulist['count']), str(prolist['problem_count']), subcount,infoname_t),
+                                   paper[0].penabled, str(stulist['count']), str(prolist['problem_count']), subcount,
+                                   infoname_t),
                           default=lambda o: o.__dict__, sort_keys=True)
     jsonpaper = json.loads(strpaper)
-    ret = {'code': 200, 'info': jsonpaper, 'paper': prolist, 'stulist': stulist }
+    ret = {'code': 200, 'info': jsonpaper, 'paper': prolist, 'stulist': stulist}
     return HttpResponse(json.dumps(ret), content_type="application/json")
 
 
@@ -206,6 +207,7 @@ def modify_paper_prolist(request):
     action = postjson['action']
     ret = {'code': 404, 'info': 'unknown action ' + action}
     ph = PaperHelper()
+    sh = StoreHelper()
 
     if action == 'addpro':
         # add problem given in POST packet to paper
@@ -216,6 +218,24 @@ def modify_paper_prolist(request):
         original_prolist = json.loads(paperdb.prolist)
         ph.AddPro(original_prolist, problem["problem"], problem["ptype"], problem["point"],
                   problem["right"], problem["wrong1"], problem["wrong2"], problem["wrong3"])
+        paperdb.prolist = json.dumps(original_prolist)
+        paperdb.save()
+        ret = {'code': 200, 'info': 'ok'}
+
+    elif action == 'add_from_store':
+        # add problem given in POST packet to paper
+        paperid = postjson['paperid']
+        problem = postjson['problem']
+        store = postjson['storeid']
+        newpro = postjson['newpro']
+        # fetch original problem list from database
+        paperdb = Paper.objects.get(pid=paperid)
+        storedb = Teststore.objects.get(storeid=store)
+        original_prolist = json.loads(paperdb.prolist)
+        storeprolist = json.loads(storedb.prolist)
+        question = sh.GetPro(storeprolist, problem)
+        ph.AddPro(original_prolist, question["problem"], question["type"], newpro["point"],
+                  question["right"], question["wrong1"], question["wrong2"], question["wrong3"])
         paperdb.prolist = json.dumps(original_prolist)
         paperdb.save()
         ret = {'code': 200, 'info': 'ok'}
@@ -260,7 +280,7 @@ def modify_paper_stulist(request):
             # TODO(LOW): verify var(stuid) whether existing
             #
             result = UserList.objects.filter(username=var)
-            if not result.exists() :
+            if not result.exists():
                 continue
 
             if (var == ''):
@@ -308,7 +328,7 @@ def result_manage(request):
         subcount = TestRecord.objects.filter(paperid=paperid).count()
         infoname_t = UserInfo.objects.filter(username=db.teaname).values("name")[0]["name"]
         test_info = json.dumps(claPaper(db.pid, db.pname, db.teaname, db.penabled,
-                                        'notused', 'notused', str(subcount),infoname_t), default=lambda o: o.__dict__,
+                                        'notused', 'notused', str(subcount), infoname_t), default=lambda o: o.__dict__,
                                sort_keys=True)
         test_info = json.loads(test_info)
         # print(test)
@@ -330,7 +350,7 @@ def test_manage(request):
         subcount = TestRecord.objects.filter(paperid=paperid).count()
         infoname_t = UserInfo.objects.filter(username=db.teaname).values("name")[0]["name"]
         test_info = json.dumps(claPaper(db.pid, db.pname, db.teaname, db.penabled,
-                                        'notused', 'notused', str(subcount),infoname_t), default=lambda o: o.__dict__,
+                                        'notused', 'notused', str(subcount), infoname_t), default=lambda o: o.__dict__,
                                sort_keys=True)
         test_info = json.loads(test_info)
         # print(test)
@@ -586,6 +606,7 @@ def upload_prolist(request):
 
     return HttpResponse(json.dumps(ret), content_type="application/json")
 
+
 def upload_stulist(request):
     ret = {'code': 403, 'info': 'denied method ' + request.method}
     ph = PaperHelper()
@@ -619,7 +640,7 @@ def upload_stulist(request):
             if not UserList.objects.filter(username=uname).exists():
                 line += 1
                 continue
-            ph.AddStu(original_stulist,uname)
+            ph.AddStu(original_stulist, uname)
 
             line += 1
         paperdb.stulist = json.dumps(original_stulist)
@@ -630,6 +651,7 @@ def upload_stulist(request):
         pass
 
         return HttpResponse(json.dumps(ret), content_type="application/json")
+
 
 def paper_export(request):
     postjson = jh.post2json(request)

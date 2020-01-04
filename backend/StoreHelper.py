@@ -1,7 +1,6 @@
-
-
 import json
 import random
+
 
 class StoreHelper:
     def __init__(self):
@@ -32,6 +31,20 @@ class StoreHelper:
         }
         list_to_append['question_list'].append(obj)
         list_to_append['id_seed'] += 1
+
+    def GetPro(self, list_to_get, id):
+        questions = list_to_get['question_list']
+        checked = False
+        ret = questions[0]
+        for i in range(0, list_to_get['problem_count']):
+            if (questions[i]['id'] == id):
+                ret = questions[i]
+                checked = True
+                break
+        if (checked):
+            return ret
+        else:
+            print('error from StoreHelper GetPro : problem id ' + str(id) + ' does not exist')
 
     def DelPro(self, list_to_del, id):
         questions = list_to_del['question_list']

@@ -30,15 +30,17 @@ def upload_prolist(request):
         # acquire subject from form
         subject = request.POST.get('subject')
         obj = request.FILES.get('file')
-        paper_db = Teststore.objects.filter(pid=subject)
+        paper_db = Teststore.objects.filter(subject=subject)
         if not paper_db.exists():
-            database = Teststore(subject = subject,
+            database = Teststore(
+                            storeid= time.strftime('%Y%m%d%H%M%S', time.localtime(time.time())),
+                            subject = subject,
                              prolist=json.dumps(sh.CreateProList()))
             database.save()
-        paperdb =  Teststore.objects.get(pid=subject)
+        paperdb =  Teststore.objects.get(subject=subject)
 
         original_prolist = json.loads(paperdb.prolist)
-
+        print("original_prolist"+str(original_prolist))
         # acquire file from form
         obj = request.FILES.get('file')
         save_path = os.path.join(settings.BASE_DIR, 'upload.xls')
@@ -71,7 +73,7 @@ def upload_prolist(request):
             sh.AddPro(original_prolist, problem, ptype, point, right, wrong1, wrong2, wrong3,nowtime)
             paperdb.prolist = json.dumps(original_prolist)
             line += 1
-
+            print(problem)
         paperdb.save()
         '''
     paperdb = Paper.objects.get(pid = subject)
@@ -90,21 +92,37 @@ def upload_prolist(request):
     return HttpResponse(json.dumps(ret), content_type="application/json")
 
 
-def get_prolist(request):
-    tname = request.session['login_name']
-    infoname = request.session['info_name']
-    papers = Teststore.objects.filter(teaname=tname)  # .all()#
-    plist = []
-    for var in papers:
-        stucount = json.loads(var.stulist)['count']
-        procount = json.loads(var.prolist)['problem_count']
-        # count the number of whom submitted the answersheet
-        subcount = TestRecord.objects.filter(paperid=var.pid).count()
-        ###
 
-        plist.append(claPaper(var.pid, var.pname, var.teaname,
-                              var.penabled, str(stucount), str(procount), str(subcount),str(infoname)))
-    jsonarr = json.dumps(plist, default=lambda o: o.__dict__, sort_keys=True)
-    loadarr = json.loads(jsonarr)
-    ret = {'code': 200, 'list': loadarr}
+
+
+def store_manage(request):
+    postjson = jh.post2json(request)
+    action = postjson['action']
+    subject = postjson['subject']
+    ret = {'code': 404, 'info': 'unknown action ' + action}
+    sh = StoreHelper()
+    print(action,subject)
+    if action == 'search':
+        paper_db = Teststore.objects.filter(subject=subject)
+        if  paper_db.exists():
+            ret = {'code': 200, 'info': 'success' + action, 'storeid': paper_db.values("storeid")[0]['storeid']}
+    if action == 'get':
+        list = Teststore.objects.filter(subject=subject).values("prolist")[0]
+        ret = {'code': 200, 'list': list}
+    return HttpResponse(json.dumps(ret), content_type="application/json")
+
+
+def get_store_detail(request):
+    #  print("request is "+request)
+    storeid = request.GET.get('storeid')
+    # get paper from database
+    # TODO(LOW): verify if the specified paper is existing
+    ###
+    print("subject is " + str(storeid))
+    paper = Teststore.objects.filter(storeid=storeid)
+    prolist = json.loads(paper[0].prolist)
+    subject = paper[0].subject
+    for var in  prolist["question_list"]:
+       var["inpaper"] = 'false'
+    ret = {'code': 200, 'paper': prolist,'subject':subject}
     return HttpResponse(json.dumps(ret), content_type="application/json")

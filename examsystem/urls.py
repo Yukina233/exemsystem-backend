@@ -61,6 +61,8 @@ urlpatterns = [
 
 
     url(r'^store-upload/', store_manage.upload_prolist),
+    url(r'^store-manage/', store_manage.store_manage),
+    url(r'^store-get-detail/', store_manage.get_store_detail),
 
 
     url(r'^echo/', views.httpecho),

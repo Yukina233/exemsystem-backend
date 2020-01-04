@@ -28,7 +28,7 @@ class StoreHelper:
             'wrong1': wrong1,
             'wrong2': wrong2,
             'wrong3': wrong3,
-            'lastTime': lastTime
+            'lastTime': lastTime,
         }
         list_to_append['question_list'].append(obj)
         list_to_append['id_seed'] += 1

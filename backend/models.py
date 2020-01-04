@@ -34,6 +34,7 @@ class TestRecord(models.Model):
   total_score = models.IntegerField()
   confirmed = models.CharField(max_length = 20)
 
-class Teststore(models.Model()):
-  subject = models.CharField(max_length = 20)
+class Teststore(models.Model):
+  storeid = models.CharField(max_length = 20, unique = True,primary_key=True)
+  subject = models.CharField(max_length = 200)
   prolist = models.CharField(max_length = 1024000)
